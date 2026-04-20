@@ -1,45 +1,56 @@
-package com.example.a52.ui.theme
+package com.example.a52
 
 import android.content.Context
+import android.os.Environment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class DataTxtSource(private val context: Context) {
     suspend fun getRepos(): List<RepositoryItem> {
         return withContext(Dispatchers.IO) {
-            val files = context.filesDir.listFiles()
+            val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES)
+            val files = dir?.listFiles()
+            val sdf = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault())
             files
-                ?.filter { it.extension == "txt" }
+                ?.filter { it.extension.equals("jpg", true) || it.extension.equals("jpeg", true) || it.extension.equals("png", true) }
                 ?.map { file ->
-                    val text = file.readText()
                     val nameNoExt = file.nameWithoutExtension
-                    val timestamp = nameNoExt.substringBefore("_").toLongOrNull() ?: 0L
-                    val fileName = nameNoExt.substringAfter("_")
-                    RepositoryItem(
-                        fileName = fileName,
-                        text = text,
-                        timestamp = timestamp
-                    )
+                    val ts = try {
+                        if (nameNoExt.startsWith("IMG_")) {
+                            val datePart = nameNoExt.removePrefix("IMG_")
+                            sdf.parse(datePart)?.time ?: file.lastModified()
+                        } else {
+                            file.lastModified()
+                        }
+                    } catch (e: Exception) {
+                        file.lastModified()
+                    }
+                    Pair(file, ts)
                 }
-                ?.sortedByDescending { it.timestamp }
+                ?.sortedByDescending { it.second }
+                ?.map { (file, _) ->
+                    RepositoryItem(name = file.name)
+                }
                 ?: emptyList()
         }
     }
 
-    suspend fun saveItem(title: String, text: String): RepositoryItem {
-        return withContext(Dispatchers.IO) {
+    fun createImageFile(): File? {
+        return try {
             val timestamp = System.currentTimeMillis()
-            val safeTitle = if (title.isBlank()) "untitled" else title.replace(" ", "_")
-            val fileName = "${timestamp}_${safeTitle}.txt"
-            val file = File(context.filesDir, fileName)
-            file.writeText(text)
-            RepositoryItem(
-                fileName = safeTitle,
-                text = text,
-                timestamp = timestamp
-            )
+            val sdf = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.getDefault())
+            val formatted = sdf.format(Date(timestamp))
+            val dir = context.getExternalFilesDir(Environment.DIRECTORY_PICTURES) ?: return null
+            if (!dir.exists()) dir.mkdirs()
+            val file = File(dir, "IMG_${formatted}.jpg")
+            file
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
         }
     }
-
 }

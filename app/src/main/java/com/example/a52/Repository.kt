@@ -1,7 +1,8 @@
-package com.example.a52.ui.theme
+package com.example.a52
+
+import java.io.File
 
 interface Repository {
     suspend fun getAll(): List<RepositoryItem>
-    suspend fun addItem(title: String, text: String): List<RepositoryItem>
-    suspend fun deleteItem(item: RepositoryItem): List<RepositoryItem>
+    fun createImageFile(): File?
 }

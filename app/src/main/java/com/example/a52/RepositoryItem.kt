@@ -1,9 +1,7 @@
-package com.example.a52.ui.theme
+package com.example.a52
 
 
 data class RepositoryItem(
-    val fileName: String,
-    val text: String,
-    val timestamp: Long
+    val name: String
 )
 
